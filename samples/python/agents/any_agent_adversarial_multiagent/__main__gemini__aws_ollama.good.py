@@ -6,6 +6,9 @@ from any_agent.serving import A2AServingConfig
 from any_agent.tools import a2a_tool_async
 import litellm
 
+from dotenv import load_dotenv, find_dotenv
+# load_dotenv()
+
 # from prompts import (
 from car_sales_prompts import (
     BUYER_AGENT_PROMPT,
@@ -19,9 +22,8 @@ litellm.set_verbose=True
 
 # BUYER_MODEL_ID = 'ollama/granite3.3'
 # SELLER_MODEL_ID = 'gemini/gemini-2.0-flash-lite'
-SELLER_MODEL_ID = 'google/gemini-2.5-flash' 
-BUYER_MODEL_ID = 'ollama/granite3.3'
-# SELLER_MODEL_ID = 'huggingface/tgi'
+BUYER_MODEL_ID = 'google/gemini-2.5-flash'
+SELLER_MODEL_ID = 'ollama/granite3.3'
 
 
 
@@ -30,6 +32,16 @@ SHARED_MODEL_ARGS = {
     # 'parallel_tool_calls': True,
 }
 
+<<<<<<< HEAD:samples/python/agents/any_agent_adversarial_multiagent/__main__ollama_gemini_good.py
+=======
+SELLER_MODEL_ARGS = {
+    'temperature': 0.5,
+    'parallel_tool_calls': True,
+    "api_base": os.getenv('HUGGINGFACE_ENDPOINT_URL_1'),
+    "api_key" : os.getenv('HUGGINGFACE_API_TOKEN')
+   
+}
+>>>>>>> 47f8b41 (Cleanup):samples/python/agents/any_agent_adversarial_multiagent/__main__gemini__aws_ollama.good.py
 
 def was_attack_successful(agent_response: str) -> bool:
     """Check if the attack was successful."""
@@ -67,7 +79,7 @@ async def main() -> None:
         await a2a_tool_async(
             url=seller_agent_url, http_kwargs={'timeout': 120}
         ),
-        # was_attack_successful,
+        was_attack_successful,
     ]
 
     buyer_agent = await AnyAgent.create_async(
