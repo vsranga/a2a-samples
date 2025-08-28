@@ -17,14 +17,17 @@ from car_sales_prompts import (
 litellm.set_verbose=True
 
 
-BUYER_MODEL_ID = 'gemini/gemini-2.5-flash'
-SELLER_MODEL_ID = 'gemini/gemini-2.0-flash-lite'
+# BUYER_MODEL_ID = 'ollama/granite3.3'
+# SELLER_MODEL_ID = 'gemini/gemini-2.0-flash-lite'
+SELLER_MODEL_ID = 'google/gemini-2.5-flash' 
+BUYER_MODEL_ID = 'ollama/granite3.3'
+# SELLER_MODEL_ID = 'huggingface/tgi'
 
 
 
 SHARED_MODEL_ARGS = {
     'temperature': 0.5,
-    'parallel_tool_calls': True,
+    # 'parallel_tool_calls': True,
 }
 
 
@@ -41,8 +44,8 @@ async def main() -> None:
             'The GEMINI_API_KEY environment variable is not set but is required to run this example.'
         )
         return
-    # Create and serve the defender agent
-    defender_agent = await AnyAgent.create_async(
+    # Create and serve the seller agent
+    seller_agent = await AnyAgent.create_async(
         agent_framework=AgentFramework.TINYAGENT,
         agent_config=AgentConfig(
             model_id=SELLER_MODEL_ID,
@@ -54,27 +57,28 @@ async def main() -> None:
         ),
     )
 
-    defender_server_handle = await defender_agent.serve_async(
+    seller_server_handle = await seller_agent.serve_async(
         A2AServingConfig(port=0)
     )  # Port 0 means any free port will be used
-    defender_agent_url = f'http://localhost:{defender_server_handle.port}'
-    print('Car Salesman agent server started at: %s', defender_agent_url)
+    seller_agent_url = f'http://localhost:{seller_server_handle.port}'
+    print('Car Salesman agent server started at: %s', seller_agent_url)
 
-    attacker_tools = [
+    buyer_tools = [
         await a2a_tool_async(
-            url=defender_agent_url, http_kwargs={'timeout': 30}
+            url=seller_agent_url, http_kwargs={'timeout': 120}
         ),
-        was_attack_successful,
+        # was_attack_successful,
     ]
 
-    attacker_agent = await AnyAgent.create_async(
+    buyer_agent = await AnyAgent.create_async(
         agent_framework=AgentFramework.TINYAGENT,
         agent_config=AgentConfig(
             model_id=BUYER_MODEL_ID,
             name='car_buyer_agent',
+            description='I am a Car Buyer agent!',
             instructions= BUYER_AGENT_PROMPT,
             model_args= SHARED_MODEL_ARGS,
-            tools=attacker_tools,
+            tools=buyer_tools,
         ),
     )
 
@@ -84,7 +88,7 @@ async def main() -> None:
     print('=' * 50)
 
     # Start the adversarial simulation
-    agent_trace = await attacker_agent.run_async(SIMULATION_START_PROMPT)
+    agent_trace = await buyer_agent.run_async(SIMULATION_START_PROMPT)
 
     print('\n=== SIMULATION RESULTS ===')
     print(agent_trace.final_output)
@@ -114,7 +118,7 @@ async def main() -> None:
             f.write('=' * 50 + '\n')
             f.write(f'{message.role}: {message.content}\n')
         f.write('=' * 50 + '\n')
-    await defender_server_handle.shutdown()
+    await seller_server_handle.shutdown()
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@ from any_agent.tools import a2a_tool_async
 import litellm
 
 from dotenv import load_dotenv, find_dotenv
-load_dotenv()
+# load_dotenv()
 
 # from prompts import (
 from car_sales_prompts import (
@@ -22,7 +22,7 @@ litellm.set_verbose=True
 
 # BUYER_MODEL_ID = 'ollama/granite3.3'
 # SELLER_MODEL_ID = 'gemini/gemini-2.0-flash-lite'
-BUYER_MODEL_ID = 'gemini/gemini-2.5-flash'
+BUYER_MODEL_ID = 'google/gemini-2.5-flash'
 SELLER_MODEL_ID = 'huggingface/tgi'
 
 

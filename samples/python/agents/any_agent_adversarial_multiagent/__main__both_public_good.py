@@ -4,10 +4,11 @@ import os
 from any_agent import AgentConfig, AgentFramework, AnyAgent
 from any_agent.serving import A2AServingConfig
 from any_agent.tools import a2a_tool_async
+from pydantic import BaseModel
+from datetime import datetime
+from enum import Enum
 import litellm
 
-from dotenv import load_dotenv, find_dotenv
-load_dotenv()
 
 # from prompts import (
 from car_sales_prompts import (
@@ -20,25 +21,16 @@ from car_sales_prompts import (
 litellm.set_verbose=True
 
 
-# BUYER_MODEL_ID = 'ollama/granite3.3'
-# SELLER_MODEL_ID = 'gemini/gemini-2.0-flash-lite'
 BUYER_MODEL_ID = 'gemini/gemini-2.5-flash'
-SELLER_MODEL_ID = 'huggingface/tgi'
+SELLER_MODEL_ID = 'gemini/gemini-2.0-flash-lite'
 
 
 
 SHARED_MODEL_ARGS = {
     'temperature': 0.5,
-    # 'parallel_tool_calls': True,
+    'parallel_tool_calls': True,
 }
 
-SELLER_MODEL_ARGS = {
-    'temperature': 0.5,
-    'parallel_tool_calls': True,
-    "api_base": os.getenv('HUGGINGFACE_ENDPOINT_URL_1'),
-    "api_key" : os.getenv('HUGGINGFACE_API_TOKEN')
-   
-}
 
 def was_attack_successful(agent_response: str) -> bool:
     """Check if the attack was successful."""
@@ -53,41 +45,40 @@ async def main() -> None:
             'The GEMINI_API_KEY environment variable is not set but is required to run this example.'
         )
         return
-    # Create and serve the seller agent
-    seller_agent = await AnyAgent.create_async(
+    # Create and serve the defender agent
+    defender_agent = await AnyAgent.create_async(
         agent_framework=AgentFramework.TINYAGENT,
         agent_config=AgentConfig(
             model_id=SELLER_MODEL_ID,
             name='seller_agent',
             instructions=SELLER_AGENT_PROMPT,
             description='I am a Car Salesman agent!',
-            model_args=SELLER_MODEL_ARGS,
+            model_args=SHARED_MODEL_ARGS,
             
         ),
     )
 
-    seller_server_handle = await seller_agent.serve_async(
+    defender_server_handle = await defender_agent.serve_async(
         A2AServingConfig(port=0)
     )  # Port 0 means any free port will be used
-    seller_agent_url = f'http://localhost:{seller_server_handle.port}'
-    print('Car Salesman agent server started at: %s', seller_agent_url)
+    defender_agent_url = f'http://localhost:{defender_server_handle.port}'
+    print('Car Salesman agent server started at: %s', defender_agent_url)
 
-    buyer_tools = [
+    attacker_tools = [
         await a2a_tool_async(
-            url=seller_agent_url, http_kwargs={'timeout': 120}
+            url=defender_agent_url, http_kwargs={'timeout': 30}
         ),
         was_attack_successful,
     ]
 
-    buyer_agent = await AnyAgent.create_async(
+    attacker_agent = await AnyAgent.create_async(
         agent_framework=AgentFramework.TINYAGENT,
         agent_config=AgentConfig(
             model_id=BUYER_MODEL_ID,
             name='car_buyer_agent',
-            description='I am a Car Buyer agent!',
             instructions= BUYER_AGENT_PROMPT,
             model_args= SHARED_MODEL_ARGS,
-            tools=buyer_tools,
+            tools=attacker_tools
         ),
     )
 
@@ -97,7 +88,7 @@ async def main() -> None:
     print('=' * 50)
 
     # Start the adversarial simulation
-    agent_trace = await buyer_agent.run_async(SIMULATION_START_PROMPT)
+    agent_trace = await attacker_agent.run_async(SIMULATION_START_PROMPT)
 
     print('\n=== SIMULATION RESULTS ===')
     print(agent_trace.final_output)
@@ -127,7 +118,7 @@ async def main() -> None:
             f.write('=' * 50 + '\n')
             f.write(f'{message.role}: {message.content}\n')
         f.write('=' * 50 + '\n')
-    await seller_server_handle.shutdown()
+    await defender_server_handle.shutdown()
 
 
 if __name__ == '__main__':

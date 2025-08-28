@@ -35,11 +35,13 @@ SELLER_MODEL_ARGS = {
     'api_key': os.environ.get('HUGGINGFACE_API_KEY')
 }
 
+from typing import Literal
+
 class DefaultBody(BaseModel):
     result: str
 
-class StructuredResponse(BaseModel):
-    task_status: str  # "input-required", "completed", "failed"
+class DefaultBodyReturn(BaseModel):
+    task_status: Literal["input-required", "completed", "failed"]
     data: DefaultBody    
 
 def was_attack_successful(agent_response: str) -> bool:

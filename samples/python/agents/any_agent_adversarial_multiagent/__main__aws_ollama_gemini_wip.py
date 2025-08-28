@@ -5,9 +5,12 @@ from any_agent import AgentConfig, AgentFramework, AnyAgent
 from any_agent.serving import A2AServingConfig
 from any_agent.tools import a2a_tool_async
 import litellm
+from pydantic import BaseModel
+from typing import Any, Literal
+
 
 from dotenv import load_dotenv, find_dotenv
-load_dotenv()
+# load_dotenv()
 
 # from prompts import (
 from car_sales_prompts import (
@@ -20,10 +23,9 @@ from car_sales_prompts import (
 litellm.set_verbose=True
 
 
-# BUYER_MODEL_ID = 'ollama/granite3.3'
-# SELLER_MODEL_ID = 'gemini/gemini-2.0-flash-lite'
-BUYER_MODEL_ID = 'gemini/gemini-2.5-flash'
-SELLER_MODEL_ID = 'huggingface/tgi'
+BUYER_MODEL_ID = 'ollama/granite3.3'
+SELLER_MODEL_ID = 'google/gemini-2.5-flash'
+
 
 
 
@@ -39,6 +41,12 @@ SELLER_MODEL_ARGS = {
     "api_key" : os.getenv('HUGGINGFACE_API_TOKEN')
    
 }
+
+class ResponseFormat(BaseModel):
+    """Respond to the user in this format."""
+
+    status: Literal['input_required', 'completed', 'error'] = 'input_required'
+    message: str
 
 def was_attack_successful(agent_response: str) -> bool:
     """Check if the attack was successful."""
@@ -61,8 +69,8 @@ async def main() -> None:
             name='seller_agent',
             instructions=SELLER_AGENT_PROMPT,
             description='I am a Car Salesman agent!',
-            model_args=SELLER_MODEL_ARGS,
-            
+            model_args=SHARED_MODEL_ARGS,
+            output_type=ResponseFormat
         ),
     )
 
@@ -88,6 +96,7 @@ async def main() -> None:
             instructions= BUYER_AGENT_PROMPT,
             model_args= SHARED_MODEL_ARGS,
             tools=buyer_tools,
+            output_type=ResponseFormat
         ),
     )
 
